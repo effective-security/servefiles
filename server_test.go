@@ -28,6 +28,7 @@ func Test_Server(t *testing.T) {
 func (s *serverTestSuite) SetupTest() {
 	s.ft = new(fakeT)
 	s.s = New(s.ft, "testdata/primary", "testdata/base")
+	s.s.OAuthFixupURL = []string{"/services/oauth2/token"}
 }
 
 func (s *serverTestSuite) TearDownTest() {
