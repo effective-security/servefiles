@@ -119,6 +119,20 @@ func (s *serverTestSuite) Test_LastRequestBody() {
 	s.Equal(2, s.s.RequestCount("/def"))
 }
 
+func (s *serverTestSuite) Test_PostFiles() {
+	reqBody := `{"type":2}`
+	resp, _ := s.doHTTPCall(http.MethodPost, "/v1/post", bytes.NewBufferString(reqBody), http.StatusOK)
+	s.JSONEq(`{"response": "2","type": 2}`, string(resp))
+	s.Equal(reqBody, string(s.s.LastBody("/v1/post")))
+	s.Equal(1, s.s.RequestCount("/v1/post"))
+
+	reqBody = `{"type":1}`
+	resp, _ = s.doHTTPCall(http.MethodPost, "/v1/post", bytes.NewBufferString(reqBody), http.StatusOK)
+	s.JSONEq(`{"response": "1","type": 1}`, string(resp))
+	s.Equal(reqBody, string(s.s.LastBody("/v1/post")))
+	s.Equal(2, s.s.RequestCount("/v1/post"))
+}
+
 func (s *serverTestSuite) Test_Missing() {
 	resp, _ := s.doHTTPCall(http.MethodGet, "/missing", nil, http.StatusNotFound)
 	s.JSONEq(`{"code": "NOT_FOUND", "message": "the requested resource does not exist"}`, string(resp))

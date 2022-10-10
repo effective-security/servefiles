@@ -3,6 +3,7 @@
 package servefiles
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -102,12 +103,12 @@ func (s *Server) SetBaseDirs(newBaseDirs ...string) {
 }
 
 type requestSettings struct {
-	ContentType string                 `json:"contentType"`
-	Filename    string                 `json:"file"`
-	StatusCode  int                    `json:"statusCode"`
-	StatusCodes []int                  `json:"statusCodes"`
-	Headers     map[string]string      `json:"headers"`
-	Filter      map[string]interface{} `json:"filter"`
+	ContentType string                            `json:"contentType"`
+	Filename    string                            `json:"file"`
+	Filenames   map[string]map[string]interface{} `json:"files"` // map filename => body filter
+	StatusCode  int                               `json:"statusCode"`
+	StatusCodes []int                             `json:"statusCodes"`
+	Headers     map[string]string                 `json:"headers"`
 }
 
 func (r *requestSettings) statusCode(reqCount int) int {
@@ -205,6 +206,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		assert.NoError(s.t, err, "unable to read request body for request to %s", requestURI)
 		hasBody = true
 	}
+
+	var reqMap map[string]interface{}
+
 	s.lock.Lock()
 	baseDirs := append([]string(nil), s.baseDirs...)
 	count := s.reqCounts[requestURI]
@@ -215,7 +219,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if hasBody {
 		s.lastBodies[requestURI] = reqBody
+		err = json.Unmarshal(reqBody, &reqMap)
+		assert.NoError(s.t, err, "unable to decode request")
 	}
+
 	s.lock.Unlock()
 	if !exists {
 		s.notFound(w, r)
@@ -224,6 +231,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var f *os.File
 	for _, baseDir := range baseDirs {
 		fn := filepath.Join(baseDir, respInfo.Filename)
+
+		for f, filter := range respInfo.Filenames {
+			for k, v := range filter {
+				if reqVal, ok := reqMap[k]; !ok || !jsonEqual(v, reqVal) {
+					continue
+				}
+				fn = filepath.Join(baseDir, f)
+				break
+			}
+		}
+
 		if f, err = os.Open(fn + fileExt); err != nil {
 			fnNext := fmt.Sprintf("%s.%d", fn, count)
 			if f, err = os.Open(fnNext + fileExt); err != nil {
@@ -273,6 +291,12 @@ func handleAuthFixup(serverURL string, w io.Writer, f io.Reader) {
 		}
 	}
 	json.NewEncoder(w).Encode(&auth)
+}
+
+func jsonEqual(v1 interface{}, v2 interface{}) bool {
+	js1, _ := json.Marshal(v1)
+	js2, _ := json.Marshal(v2)
+	return bytes.Equal(js1, js2)
 }
 
 func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
