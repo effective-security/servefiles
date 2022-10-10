@@ -40,6 +40,9 @@ type Server struct {
 	reqFiles   map[string]requestSettings
 	reqHdrs    map[string]map[string][]string
 	lastBodies map[string][]byte
+
+	// OAuthFixupURL allows to specify paths for OAuth fix
+	OAuthFixupURL []string
 }
 
 // New creates a new instance of the test HTTP server.
@@ -66,10 +69,12 @@ func New(t MinimalTestingT, baseDirs ...string) *Server {
 // valid, it'll fail the test. The directory is expected to contain a requests.json
 // file that provides the mapping from request URI to file with the response
 // data in it. e.g.
-// {
-//    "/v1/status" : "status",
-//    "get:/v1/status" : "getstatus"
-// }
+//
+//	{
+//	   "/v1/status" : "status",
+//	   "get:/v1/status" : "getstatus"
+//	}
+//
 // the actual file used will be status.json, if this doesn't exist
 // then it'll look for a file based on the number of requests to this URI
 // e.g. status.1.json, status.2.json, etc.
@@ -264,10 +269,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(respInfo.statusCode(count))
-	// TODO: add more OAuth paths
-	if strings.Contains(requestURI, "/oauth2/token") {
-		handleAuthFixup(s.server.URL, w, f)
-		return
+	for _, oauth := range s.OAuthFixupURL {
+		if oauth == requestURI {
+			handleAuthFixup(s.server.URL, w, f)
+			return
+		}
 	}
 	io.Copy(w, f)
 }
