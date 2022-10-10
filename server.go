@@ -224,8 +224,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if hasBody {
 		s.lastBodies[requestURI] = reqBody
-		err = json.Unmarshal(reqBody, &reqMap)
-		assert.NoError(s.t, err, "unable to decode request")
+
+		ct := r.Header.Get(httpHeaderContentType)
+		if ct == "" || ct == httpHeaderApplicationJSON {
+			err = json.Unmarshal(reqBody, &reqMap)
+			assert.NoError(s.t, err, "unable to decode request")
+		}
 	}
 
 	s.lock.Unlock()
