@@ -222,7 +222,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Header != nil {
 		s.reqHdrs[requestURI] = r.Header
 	}
-	if hasBody {
+	if hasBody && len(reqBody) > 0 {
 		s.lastBodies[requestURI] = reqBody
 
 		ct := r.Header.Get(httpHeaderContentType)
