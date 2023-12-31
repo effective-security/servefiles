@@ -62,7 +62,7 @@ GOLANG_HOST := golang.org
 GIT_DIRTY := $(shell git describe --dirty --always --tags --long | grep -q -e '-dirty' && echo -$$HOSTNAME)
 GIT_HASH := $(shell git rev-parse --short HEAD)
 # number of commits
-COMMITS_COUNT := $(shell git rev-list --count ${GIT_HASH})
+COMMITS_COUNT := $(shell git rev-list --no-merges --count HEAD)
 #
 PROD_VERSION := $(shell cat .VERSION)
 GIT_VERSION := $(shell printf %s.%d%s ${PROD_VERSION} ${COMMITS_COUNT} ${GIT_DIRTY})
@@ -77,14 +77,12 @@ export GOBIN=$(PROJ_ROOT)/bin
 export VENDOR_SRC=$(PROJ_ROOT)/vendor
 
 # tools path
-export TOOLS_PATH := ${PROJ_DIR}/.tools
-export TOOLS_BIN := ${TOOLS_PATH}/bin
-export PATH := ${PATH}:${PROJ_BIN}:${TOOLS_BIN}
+export PATH := ${PROJ_BIN}:${PATH}
 
 # List of all .go files in the project, exluding vendor and tools
 PROJ_GOFILES = $(shell find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./.gopath/*" -not -path "./.tools/*")
 
-COVERAGE_EXCLUSIONS="/rt\.go|/bindata\.go|_test.go|_mock.go|main.go"
+COVERAGE_EXCLUSIONS="/rt\.go|/bindata\.go|_test.go|_mock.go"
 
 # flags
 INTEGRATION_TAG="integration"
@@ -197,13 +195,13 @@ fmt:
 	echo "Running Fmt"
 	gofmt -s -l -w ${GOFILES_NOVENDOR}
 
-vet: build
+vet:
 	echo "Running vet"
 	go vet ${BUILD_FLAGS} ./...
 
 lint:
 	echo "Running lint"
-	go list ./... | grep -v /vendor/ | xargs -L1 golint -set_exit_status
+	golangci-lint run
 
 test: fmt vet lint
 	echo "Running test"
@@ -219,6 +217,7 @@ sometests:
 
 covtest: fmt vet lint
 	echo "Running covtest"
+	rm -rf ${COVPATH}
 	$(call go_test_cover,${PROJ_DIR},${BUILD_FLAGS},${TEST_RACEFLAG},${TEST_GORACEOPTIONS},.,${COVERAGE_EXCLUSIONS})
 
 # Runs integration tests as well

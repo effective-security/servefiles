@@ -20,9 +20,9 @@ clean:
 		${PROJ_BIN}
 
 tools:
-	go install github.com/go-phorce/cov-report/cmd/cov-report
-	go install golang.org/x/lint/golint
-	go install github.com/mattn/goveralls
+	go install github.com/go-phorce/cov-report/cmd/cov-report@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54
+	go install github.com/mattn/goveralls@latest
 
 build:
 	echo "nothing to build yet"

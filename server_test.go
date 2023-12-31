@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -41,7 +40,7 @@ func (s *serverTestSuite) doHTTPCall(method, path string, body io.Reader, expSta
 	res, err := http.DefaultClient.Do(req)
 	s.Require().NoError(err)
 	defer res.Body.Close()
-	resBody, err := ioutil.ReadAll(res.Body)
+	resBody, err := io.ReadAll(res.Body)
 	s.Require().NoError(err)
 	s.Require().Equal(expStatusCode, res.StatusCode)
 	return resBody, res.Header
