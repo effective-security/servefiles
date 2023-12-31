@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -98,7 +97,7 @@ func (s *Server) SetBaseDirs(newBaseDirs ...string) {
 		require.True(s.t, stat.IsDir(), "Supplied baseDir %s should be a directory", d)
 	}
 	var reqMap map[string]requestSettings
-	bytes, err := ioutil.ReadFile(filepath.Join(newBaseDirs[0], "requests.json"))
+	bytes, err := os.ReadFile(filepath.Join(newBaseDirs[0], "requests.json"))
 	require.NoError(s.t, err)
 	require.NoError(s.t, json.Unmarshal(bytes, &reqMap))
 	s.lock.Lock()
@@ -207,7 +206,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	hasBody := false
 	if r.Method == http.MethodPost || r.Method == http.MethodPut {
-		reqBody, err = ioutil.ReadAll(r.Body)
+		reqBody, err = io.ReadAll(r.Body)
 		assert.NoError(s.t, err, "unable to read request body for request to %s", requestURI)
 		hasBody = true
 	}
@@ -279,7 +278,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	io.Copy(w, f)
+	_, _ = io.Copy(w, f)
 }
 
 // handleAuthFixup is special handling for the token auth response which contains
@@ -289,7 +288,7 @@ func handleAuthFixup(serverURL string, w io.Writer, f io.Reader) {
 	var auth map[string]interface{}
 	dec := json.NewDecoder(f)
 	dec.UseNumber()
-	dec.Decode(&auth)
+	_ = dec.Decode(&auth)
 	auth["instance_url"] = serverURL
 	if id, exists := auth["id"]; exists {
 		idURL, err1 := url.Parse(id.(string))
@@ -300,7 +299,7 @@ func handleAuthFixup(serverURL string, w io.Writer, f io.Reader) {
 			auth["id"] = idURL.String()
 		}
 	}
-	json.NewEncoder(w).Encode(&auth)
+	_ = json.NewEncoder(w).Encode(&auth)
 }
 
 func jsonEqual(v1 interface{}, v2 interface{}) bool {
@@ -313,7 +312,7 @@ func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
 	s.t.Logf("no response file exists for %s, returning a 404 response", r.URL.Path)
 	notFound := `{"code": "NOT_FOUND", "message": "the requested resource does not exist"}`
 	w.WriteHeader(http.StatusNotFound)
-	io.WriteString(w, notFound)
+	_, _ = io.WriteString(w, notFound)
 }
 
 const (
